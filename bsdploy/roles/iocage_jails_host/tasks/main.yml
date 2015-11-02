@@ -1,0 +1,162 @@
+---
+- name: bind host sshd to primary ip
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: ^ListenAddress
+    line: 'ListenAddress {{ ploy_jail_host_sshd_listenaddress }}'
+  notify: restart sshd
+
+- { include: openntpd.yml, tags: openntpd }
+- { include: obsolete-ipf.yml, tags: pf }
+- { include: pf.yml, tags: pf }
+
+- name: Setup cloned interfaces
+  sysrc:
+    name: cloned_interfaces
+    value: "{{ ploy_jail_host_cloned_interfaces }}"
+  notify: restart network
+
+- meta: flush_handlers
+
+# The sysctl module in ansible adds spaces around the equal sign in
+# /etc/sysctl.conf which breaks in FreeBSD 10, so we do this manually
+- name: Enable security.jail.allow_raw_sockets
+  lineinfile:
+    dest: /etc/sysctl.conf
+    regexp: ^security.jail.allow_raw_sockets\s*=
+    line: security.jail.allow_raw_sockets=1
+  notify: reload sysctl
+  tags: sysctl
+- name: Enable security.jail.sysvipc_allowed
+  lineinfile:
+    dest: /etc/sysctl.conf
+    regexp: ^security.jail.sysvipc_allowed\s*=
+    line: security.jail.sysvipc_allowed=1
+  notify: reload sysctl
+  tags: sysctl
+
+- name: Ensure helper packages are installed (using http proxy)
+  pkgng: name={{ item }} state=present
+  with_items:
+  - iocage
+  when: ploy_http_proxy is defined
+  environment:
+   http_proxy: "{{ploy_http_proxy}}"
+   https_proxy: "{{ploy_http_proxy}}"
+
+- name: Ensure helper packages are installed
+  pkgng: name={{ item }} state=present
+  with_items:
+  - iocage
+  when: ploy_http_proxy is not defined
+
+- name: Set default jail interface
+  sysrc:
+    name: jail_interface
+    value: "{{ ploy_jail_host_default_jail_interface }}"
+  notify: restart iocage
+- name: Set default jail parameters
+  sysrc:
+    name: jail_parameters
+    value: "allow.raw_sockets=1 allow.sysvipc=1"
+  notify: restart iocage
+- name: Set default jail exec stop
+  sysrc:
+    name: jail_exec_stop
+    value: "/bin/sh /etc/rc.shutdown"
+  notify: restart iocage
+- name: Enable jail_parallel_start
+  sysrc:
+    name: jail_parallel_start
+    value: "YES"
+
+- name: Enable iocage in rc.conf
+  service:
+    name: iocage
+    enabled: yes
+  notify: restart iocage
+
+- name: Setup data zpool
+  zpool:
+    name: "{{ ploy_bootstrap_data_pool_name }}"
+    geli: "{{ ploy_bootstrap_geli|bool }}"
+    version: "{{ ploy_bootstrap_zpool_version }}"
+    devices: "{{ ploy_bootstrap_data_pool_devices }}"
+    raid_mode: "{{ ploy_bootstrap_raid_mode }}"
+
+- name: Set data zpool options
+  zfs:
+    name="{{ ploy_bootstrap_data_pool_name }}"
+    state=present
+    atime=off
+    checksum=on
+
+- name: Activate iocage zpool
+  command: "iocage activate {{ ploy_bootstrap_data_pool_name }}"
+
+- name: Initialize iocage (using http proxy)
+  command: "iocage iocage fetch release={{ ploy_ezjail_install_release|default(ansible_distribution_release) }} ftphost={{ ploy_ezjail_install_host }} ftpdir={{ ploy_iocage_fetch_path }}/{{ ploy_ezjail_install_release|default(ansible_distribution_release) }} creates=/iocage/releases/{{ ploy_ezjail_install_release|default(ansible_distribution_release) }}/root"
+  when: ploy_http_proxy is defined
+  environment:
+    http_proxy: "{{ploy_http_proxy}}"
+    https_proxy: "{{ploy_http_proxy}}"
+
+- name: Initialize iocage (may take a while)
+  command: "iocage iocage fetch release={{ ploy_ezjail_install_release|default(ansible_distribution_release) }} ftphost={{ ploy_ezjail_install_host }} ftpdir={{ ploy_iocage_fetch_path }}/{{ ploy_ezjail_install_release|default(ansible_distribution_release) }} creates=/iocage/releases/{{ ploy_ezjail_install_release|default(ansible_distribution_release) }}/root"
+  when: ploy_http_proxy is not defined
+
+- name: Create pkg cache folder
+  file: dest=/var/cache/pkg/All/ state=directory owner=root group=wheel
+
+# TODO: is this still necessary?
+- name: Download pkg.txz using proxy
+  get_url: dest=/var/cache/pkg/All/pkg.txz url={{ pkg_txz_url }}
+  when: ploy_http_proxy is defined
+  environment:
+    http_proxy: "{{ploy_http_proxy}}"
+    https_proxy: "{{ploy_http_proxy}}"
+
+- name: Download pkg.txz
+  get_url: dest=/var/cache/pkg/All/pkg.txz url={{ pkg_txz_url }}
+  when: ploy_http_proxy is not defined
+
+# TODO
+#- name: Pkg in bsdploy_base flavour
+#  command: "tar -x -C /usr/jails/flavours/bsdploy_base --chroot --exclude '+*' -f /var/cache/pkg/All/pkg.txz creates=/usr/jails/flavours/bsdploy_base/usr/local/sbin/pkg"
+
+#- name: The .ssh directory for root in bsdploy_base flavour
+#  file:
+#    dest: "/usr/jails/flavours/bsdploy_base/{{ploy_root_home_path}}/.ssh"
+#    state: directory
+#    mode: "0600"
+#    owner: "{{ploy_root_user_name}}"
+#    group: wheel
+
+#- name: The etc directory in bsdploy_base flavour
+#  file: dest=/usr/jails/flavours/bsdploy_base/etc state=directory owner=root group=wheel
+#- name: The etc/ssh directory in bsdploy_base flavour
+#  file: dest=/usr/jails/flavours/bsdploy_base/etc/ssh state=directory owner=root group=wheel
+
+#- copy: src=make.conf dest=/usr/jails/flavours/bsdploy_base/etc/make.conf owner=root group=wheel
+#- file: dest=/usr/jails/flavours/bsdploy_base/usr/local/etc/pkg/repos state=directory owner=root group=wheel
+#- template: src=pkg.conf dest=/usr/jails/flavours/bsdploy_base/usr/local/etc/pkg.conf owner=root group=wheel
+#- template: src=FreeBSD.conf dest=/usr/jails/flavours/bsdploy_base/usr/local/etc/pkg/repos/FreeBSD.conf owner=root group=wheel
+
+
+#
+# configure bsdploy_base flavour
+#
+
+#- name: rc.conf for bsdploy_base flavour
+#  copy: src=base_flavour_rc.conf dest=/usr/jails/flavours/bsdploy_base/etc/rc.conf owner=root group=wheel
+#- name: sshd_config for bsdploy_base flavour
+#  copy: src=base_flavour_sshd_config dest=/usr/jails/flavours/bsdploy_base/etc/ssh/sshd_config owner=root group=wheel
+#- name: motd for bsdploy_base flavour
+#  copy: src=base_flavour_motd dest=/usr/jails/flavours/bsdploy_base/etc/motd owner=root group=wheel
+#- name: copy some settings from host to bsdploy_base flavour
+#  shell: cmp -s {{ item.src }} {{ item.dest }} || cp -v {{ item.src }} {{ item.dest }}
+#  register: _cp_settings_result
+#  changed_when: _cp_settings_result.stdout|default() != ''
+#  with_items:
+#    - { src: "/etc/resolv.conf", dest: "/usr/jails/flavours/bsdploy_base/etc/resolv.conf" }
+#    - { src: "/{{ploy_root_home_path}}/.ssh/authorized_keys", dest: "/usr/jails/flavours/bsdploy_base{{ploy_root_home_path}}/.ssh/authorized_keys" }

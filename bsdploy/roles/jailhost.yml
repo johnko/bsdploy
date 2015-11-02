@@ -2,4 +2,4 @@
 - user: root
   roles:
     - dhcp_host
-    - jails_host
+    - iocage_jails_host

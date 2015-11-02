@@ -1,6 +1,8 @@
 BSDploy – FreeBSD jail provisioning
 ===================================
 
+This fork is experimenting with iocage support.
+
 BSDploy is a comprehensive tool to remotely **provision**, **configure** and **maintain** `FreeBSD <http://www.freebsd.org>`_ `jail hosts and jails <http://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/jails.html>`_.
 
 Its main design goal is to lower the barrier to *repeatable jail setups*.
@@ -27,7 +29,7 @@ Main Features
 How it works
 ------------
 
-BSDploy takes the shape of a commandline tool by the name of ``ploy`` which is installed on a so-called *control host* (typically your laptop or desktop machine) with which you then control one or more *target hosts*. The only two things installed on target hosts by BSDploy are Python and ``ezjail`` – everything else stays on the control host.
+BSDploy takes the shape of a commandline tool by the name of ``ploy`` which is installed on a so-called *control host* (typically your laptop or desktop machine) with which you then control one or more *target hosts*. The only two things installed on target hosts by BSDploy are Python and ``iocage`` – everything else stays on the control host.
 
 
 Example Session
@@ -61,7 +63,7 @@ Under the hood
 
 BSDploy's scope is quite ambitious, so naturally it does not attempt to do all of the work on its own. In fact, BSDPloy is just a fairly thin, slightly opinionated wrapper around existing excellent tools.
 
-In addition to the above mentioned Ansible and Fabric, it uses `ezjail <http://erdgeist.org/arts/software/ezjail/>`_ on the host to manage the jails and on the client numerous members of the `ployground family <https://github.com/ployground/>`_ for pretty much everything else.
+In addition to the above mentioned Ansible and Fabric, it uses `iocage <https://github.com/iocage/iocage>`_ on the host to manage the jails and on the client numerous members of the `ployground family <https://github.com/ployground/>`_ for pretty much everything else.
 
 
 Full documentation

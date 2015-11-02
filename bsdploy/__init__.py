@@ -42,7 +42,7 @@ virtualbox_bootdisk_defaults = {
 }
 
 
-ez_instance_defaults = {
+ioc_instance_defaults = {
     'ansible_python_interpreter': '/usr/local/bin/python2.7',
     'fabric-shell': '/bin/sh -c',
 }
@@ -57,7 +57,7 @@ class PloyBootstrapCmd(object):
         parser = argparse.ArgumentParser(
             prog="%s bootstrap" % self.ctrl.progname,
             description=help)
-        masters = dict((master.id, master) for master in self.ctrl.get_masters('ezjail_admin'))
+        masters = dict((master.id, master) for master in self.ctrl.get_masters('iocage_admin'))
         parser.add_argument(
             "master",
             nargs='?' if len(masters) == 1 else 1,
@@ -119,10 +119,10 @@ def augment_instance(instance):
             for key, value in virtualbox_bootdisk_defaults.items():
                 defaultdisk.setdefault(key, value)
 
-    if not instance.master.sectiongroupname.startswith('ez-'):
+    if not instance.master.sectiongroupname.startswith('ioc-'):
         return
 
-    for key, value in ez_instance_defaults.items():
+    for key, value in ioc_instance_defaults.items():
         instance.config.setdefault(key, value)
 
     if 'fabfile' not in instance.config:

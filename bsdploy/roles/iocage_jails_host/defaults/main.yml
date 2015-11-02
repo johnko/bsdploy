@@ -4,10 +4,11 @@ ploy_bootstrap_raid_mode: "detect"
 ploy_bootstrap_data_pool_devices: ""
 ploy_bootstrap_geli: no
 ploy_bootstrap_zpool_version: 28
-ploy_ezjail_install_host: "ftp.freebsd.org"
-jails_dir: /usr/jails
+ploy_iocage_install_host: "ftp.freebsd.org"
+ploy_iocage_fetch_path: "/pub/FreeBSD/releases/amd64/amd64"
+jails_dir: /iocage/jails
 jails_zfs_root:  "{{ ploy_bootstrap_data_pool_name }}/jails"
-zfs_checksum: fletcher4
+zfs_checksum: on
 pkg_txz_url: http://pkg.freebsd.org/freebsd:10:x86:64/quarterly/Latest/pkg.txz
 jails_pkg_url: "pkg+http://pkg.freeBSD.org/${ABI}/latest"
 pf_nat_jail_networks:

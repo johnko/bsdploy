@@ -1,14 +1,14 @@
 ---
 - name: restart network
   raw: /etc/netstart
-- name: restart ezjail
-  service: name=ezjail state=restarted
+- name: restart iocage
+  service: name=iocage state=restarted
 - name: reload pf
   service: name=pf state=reloaded
 - name: restart sshd
   service: name=sshd state=restarted
-- name: restart ntpd
-  service: name=ntpd state=restarted
+- name: restart openntpd
+  service: name=openntpd state=restarted
 - name: reload sysctl
   raw: service sysctl reload
   register: command_result
