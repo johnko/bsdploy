@@ -1,6 +1,6 @@
 2.2.0 - Unreleased
 ==================
-
+- [feature] support for iocage
 
 2.1.0 - 2015-07-26
 ==================
