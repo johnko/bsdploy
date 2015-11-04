@@ -7,7 +7,6 @@
   notify: restart sshd
 
 - { include: openntpd.yml, tags: openntpd }
-- { include: obsolete-ipf.yml, tags: pf }
 - { include: pf.yml, tags: pf }
 
 - name: Setup cloned interfaces
